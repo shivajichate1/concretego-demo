@@ -10,7 +10,7 @@ variable "location" {
 
 variable "prefix" {
   type    = string
-  default = "demo"
+  default = "cgdemo"
 }
 
 variable "tags" {
