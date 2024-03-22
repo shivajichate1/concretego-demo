@@ -3,4 +3,5 @@
 tags = {
   archuuid = "b8af0c25-b962-40ae-a505-db14ce157bb1"
   env      = "Demo"
+  datadog = "false"
 }

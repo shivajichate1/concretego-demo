@@ -1,12 +1,14 @@
+
 resource "azurerm_resource_group" "concretego-demo" {
-  tags     = merge(var.tags, {datadog = "false"})
+  tags     = merge(var.tags, {})
   name     = "concretego-${var.prefix}"
   location = var.location
 }
 
+
 resource "azurerm_service_plan" "concretego-ASP" {
-  tags                = merge(var.tags, {datadog = "false"})
-  sku_name            = "B1"
+  tags                = merge(var.tags, {})
+  sku_name            = var.app_service_plans["cgapps_asp"].sku_name
   resource_group_name = azurerm_resource_group.concretego-demo.name
   os_type             = "Windows"
   name                = "concretego-${var.prefix}"
@@ -14,7 +16,7 @@ resource "azurerm_service_plan" "concretego-ASP" {
 }
 
 resource "azurerm_windows_web_app" "concretego" {
-  tags                = merge(var.tags, {datadog = "false"})
+  tags                = merge(var.tags, {})
   service_plan_id     = azurerm_service_plan.concretego-ASP.id
   resource_group_name = azurerm_resource_group.concretego-demo.name
   name                = "concretego-${var.prefix}"
@@ -57,16 +59,8 @@ resource "azurerm_template_deployment" "concretego_IISManager" {
 }
 
 
-
-
-
-
-
-
-
-
 resource "azurerm_windows_web_app" "concretego-api" {
-  tags                = merge(var.tags, {datadog = "false"})
+  tags                = merge(var.tags, {})
   service_plan_id     = azurerm_service_plan.concretego-ASP.id
   resource_group_name = azurerm_resource_group.concretego-demo.name
   name                = "concretego-api-${var.prefix}"
@@ -75,7 +69,7 @@ resource "azurerm_windows_web_app" "concretego-api" {
   client_affinity_enabled = true  # Session Affinity
 
   app_settings = {
-    ASPNETCORE_ENVIRONMENT = "Staging"
+    ASPNETCORE_ENVIRONMENT = "${var.env}"
   }
 
   site_config {
@@ -93,16 +87,16 @@ resource "azurerm_windows_web_app" "concretego-api" {
 
 resource "azurerm_redis_cache" "concretego-redis_cache" {
   tags                = merge(var.tags, {})
-  sku_name            = "Standard"
+  sku_name            = var.redis_caches["concretego_redis_cache"].sku_name
   resource_group_name = azurerm_resource_group.concretego-demo.name
   name                = "concretego-${var.prefix}"
   location            = var.location
-  family              = "C"
-  capacity            = 0
+  family              = var.redis_caches["concretego_redis_cache"].family
+  capacity            = var.redis_caches["concretego_redis_cache"].capacity
 
   redis_configuration {
-    maxmemory_reserved = 35
-    maxmemory_policy   = "volatile-lru"
+    maxmemory_reserved = var.redis_caches["concretego_redis_cache"].maxmemory_reserved
+    maxmemory_policy   = var.redis_caches["concretego_redis_cache"].maxmemory_policy
   }
 }
 
@@ -111,10 +105,10 @@ resource "azurerm_storage_account" "concretego-storage_account" {
   resource_group_name      = azurerm_resource_group.concretego-demo.name
   name                     = "concretego${var.prefix}"
   location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-  account_kind             = "StorageV2"
-  access_tier              = "Hot"
+  account_tier             = var.storage_accounts["concretego_storage_account"].account_tier
+  account_replication_type = var.storage_accounts["concretego_storage_account"].account_replication_type
+  account_kind             = var.storage_accounts["concretego_storage_account"].account_kind
+  access_tier              = var.storage_accounts["concretego_storage_account"].access_tier
 }
 
 resource "azurerm_resource_group" "webcrete" {
@@ -124,8 +118,8 @@ resource "azurerm_resource_group" "webcrete" {
 }
 
 resource "azurerm_service_plan" "concretego-funcation-service_plan" {
-  tags                = merge(var.tags, {datadog = "false"})
-  sku_name            = "B1"
+  tags                = merge(var.tags, {})
+  sku_name            = var.app_service_plans["cgfuncation_asp"].sku_name
   resource_group_name = azurerm_resource_group.webcrete.name
   os_type             = "Windows"
   name                = "concretego-${var.prefix}-Funcation-ASP"
@@ -137,14 +131,14 @@ resource "azurerm_storage_account" "eventhub-storage_account" {
   resource_group_name      = azurerm_resource_group.webcrete.name
   name                     = "eventhubcnewcg${var.prefix}"
   location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-  account_kind             = "StorageV2"
-  access_tier              = "Hot"
+  account_tier             = var.storage_accounts["eventhub_storage_account"].account_tier
+  account_replication_type = var.storage_accounts["eventhub_storage_account"].account_replication_type
+  account_kind             = var.storage_accounts["eventhub_storage_account"].account_kind
+  access_tier              = var.storage_accounts["eventhub_storage_account"].access_tier
 }
 
 resource "azurerm_windows_function_app" "eventhub-function-app" {
-  tags                       = merge(var.tags, {datadog = "false"})
+  tags                       = merge(var.tags, {})
   storage_account_name       = azurerm_storage_account.eventhub-storage_account.name
   storage_account_access_key = azurerm_storage_account.eventhub-storage_account.primary_access_key
   service_plan_id            = azurerm_service_plan.concretego-funcation-service_plan.id
