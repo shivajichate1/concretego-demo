@@ -1,10 +1,15 @@
 variable "env" {
   type    = string
-  default = "Demo"
+  default = "e2e"
 }
 variable "hostname" {
   type    = string
   default = "test.com"
+}
+
+variable "rg" {
+  type    = string
+  default = "staging"
 }
 
 variable "location" {
@@ -12,9 +17,9 @@ variable "location" {
   default = "North Central US"
 }
 
-variable "prefix" {
+variable "suffix" {
   type    = string
-  default = "cgdemo"
+  default = "e2e"
 }
 
 
@@ -23,6 +28,7 @@ variable "tags" {
   description = "Default tags to apply to all resources."
   type        = map(any)
 }
+
 
 variable "app_service_plans" {
   description = "Map of Azure App Service Plan configurations"
@@ -84,4 +90,16 @@ variable "redis_caches" {
 
     # Add more configurations 
   }
+}
+
+variable "concretego_zone_id" {
+  description = "The AWS Route 53 Zone ID for the concretego.com domain"
+  type        = string
+  default     = "Z1D3I1VIJKY1XN"
+}
+
+variable "cg_sysdyne_cloud_zone_id" {
+  description = "The AWS Route 53 Zone ID for the cg.sysdyne.cloud domain"
+  type        = string
+  default     = "Z10414221EAE9E7BKFO1"
 }
