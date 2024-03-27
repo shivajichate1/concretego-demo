@@ -141,6 +141,10 @@ resource "azurerm_app_service_custom_hostname_binding" "concretego_custom_domain
   hostname            = each.value
   app_service_name    = azurerm_windows_web_app.concretego.name
   resource_group_name = azurerm_windows_web_app.concretego.resource_group_name
+
+  # Add SSL certificate configuration here
+  ssl_state   = "SniEnabled"  # Enable SNI-based SSL
+  thumbprint  = each.value == "e2e.concretego.com" ? local.concretego_ssl_thumbprint : local.cg_sysdyne_cloud_ssl_thumbprint
 }
 
 # Custom domain bindings for concretego-api Azure Web App
@@ -149,6 +153,10 @@ resource "azurerm_app_service_custom_hostname_binding" "concretego_api_custom_do
   hostname            = each.value
   app_service_name    = azurerm_windows_web_app.concretego-api.name
   resource_group_name = azurerm_windows_web_app.concretego-api.resource_group_name
+
+  # Add SSL certificate configuration here
+  ssl_state   = "SniEnabled"  # Enable SNI-based SSL
+  thumbprint  = each.value == "api-e2e.concretego.com" ? local.concretego_ssl_thumbprint : null  # Assuming concretego-api does not use cg.sysdyne.cloud SSL
 }
 
 
