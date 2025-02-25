@@ -62,20 +62,35 @@ jobs:
       - name: Setup Terraform (Latest Version)
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: latest  # Ensures Terraform is always up-to-date
+          terraform_version: latest
 
       - name: Define State Directory
         run: |
           export TMP_DIR_NAME=".state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}"
           echo "TMP_DIR_NAME=$TMP_DIR_NAME" >> $GITHUB_ENV
-          mkdir -p $TMP_DIR_NAME  # Ensure the directory exists
+          mkdir -p $TMP_DIR_NAME  # Ensures directory exists
 
       - name: Debug State Directory
-        run: ls -l $TMP_DIR_NAME || echo "State directory does not exist"
+        run: |
+          if [ -d "$TMP_DIR_NAME" ]; then
+            echo "State directory exists: $TMP_DIR_NAME"
+            ls -l $TMP_DIR_NAME
+          else
+            echo "State directory does NOT exist!"
+          fi
 
-      - uses: jorgebg/stateful-action@v0.3
-        with:
-          branch: state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+      - name: Setup Git Worktree Properly
+        run: |
+          git fetch origin state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }} || true
+          if git show-ref --verify --quiet refs/heads/state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}; then
+            echo "Branch exists, setting up worktree..."
+            git worktree add $TMP_DIR_NAME state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+          else
+            echo "Branch does not exist, creating new branch..."
+            git checkout -b state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+            git push origin state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+            git worktree add $TMP_DIR_NAME state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+          fi
 
       - name: Azure Login
         uses: azure/login@v1
@@ -94,8 +109,8 @@ jobs:
       - name: Terraform Init (with Upgrade)
         run: |
           cd platform-api
-          terraform init -upgrade  # Ensures the latest provider versions
-          terraform validate       # Validates the Terraform configuration
+          terraform init -upgrade
+          terraform validate
 
       - name: Terraform Plan
         if: inputs.action == 'plan'
@@ -104,6 +119,11 @@ jobs:
       - name: Terraform Apply
         if: inputs.action == 'apply'
         run: cd platform-api && terraform apply -auto-approve
+
+      - name: Cleanup Git Worktree
+        run: |
+          git worktree remove $TMP_DIR_NAME || echo "Worktree already removed"
+          git branch -D state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }} || echo "Branch already deleted"
 
       - name: Route 53 Configuration
         run: aws route53 list-hosted-zones
