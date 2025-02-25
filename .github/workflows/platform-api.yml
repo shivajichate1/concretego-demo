@@ -1,5 +1,5 @@
 name: Terraform Deployment
-
+run-name: "[${{ inputs.environment }}][${{ inputs.action }}] Terraform"
 on:
   workflow_dispatch:
     inputs:
