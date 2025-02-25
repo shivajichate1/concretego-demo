@@ -2,7 +2,6 @@ name: Terraform Apply
 run-name: "[${{ inputs.environment }}] Terraform"
 
 env:
-  APPLICATION_NAME: platform-api
   AZURE_SUBSCRIPTION_ID: 33dc506b-61d2-47dc-ab46-101c0ce1bea1
   AZURE_CLIENT_ID: b99549ff-262f-43e6-93a2-eac672c1f539
   AZURE_TENANT_ID: f2eae34a-d4a2-4d23-a74a-ccb32db66fd4
@@ -64,34 +63,6 @@ jobs:
         with:
           terraform_version: latest
 
-      - name: Define State Directory
-        run: |
-          export TMP_DIR_NAME=".state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}"
-          echo "TMP_DIR_NAME=$TMP_DIR_NAME" >> $GITHUB_ENV
-          mkdir -p $TMP_DIR_NAME  # Ensures directory exists
-
-      - name: Debug State Directory
-        run: |
-          if [ -d "$TMP_DIR_NAME" ]; then
-            echo "State directory exists: $TMP_DIR_NAME"
-            ls -l $TMP_DIR_NAME
-          else
-            echo "State directory does NOT exist!"
-          fi
-
-      - name: Setup Git Worktree Properly
-        run: |
-          git fetch origin state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }} || true
-          if git show-ref --verify --quiet refs/heads/state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}; then
-            echo "Branch exists, setting up worktree..."
-            git worktree add $TMP_DIR_NAME state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
-          else
-            echo "Branch does not exist, creating new branch..."
-            git checkout -b state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
-            git push origin state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
-            git worktree add $TMP_DIR_NAME state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
-          fi
-
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -106,29 +77,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Init (with Upgrade)
+      - name: Terraform Init (Using Backend Config)
         run: |
           cd platform-api
-          terraform init -upgrade
-          terraform validate
+          BACKEND_FILE="backend-configs/${{ inputs.environment }}.backend.tfvars"
+          if [ -f "$BACKEND_FILE" ]; then
+            terraform init -backend-config="$BACKEND_FILE" -reconfigure
+          else
+            echo "Backend config file not found: $BACKEND_FILE"
+            exit 1
+          fi
 
       - name: Terraform Plan
-        if: inputs.action == 'plan'
+        if: ${{ inputs.action == 'plan' }}
         run: cd platform-api && terraform plan
 
       - name: Terraform Apply
-        if: inputs.action == 'apply'
+        if: ${{ inputs.action == 'apply' }}
         run: cd platform-api && terraform apply -auto-approve
-
-      - name: Cleanup Git Worktree
-        run: |
-          git worktree remove $TMP_DIR_NAME || echo "Worktree already removed"
-          git branch -D state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }} || echo "Branch already deleted"
-
-      - name: Route 53 Configuration
-        run: aws route53 list-hosted-zones
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: terraform-logs
-          path: ${{ env.TMP_DIR_NAME }}
