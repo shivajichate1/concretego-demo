@@ -1,0 +1,106 @@
+name: Terraform Apply
+run-name: "[${{ inputs.environment }}] Terraform"
+
+env:
+  APPLICATION_NAME: platform-api
+  TMP_DIR_NAME: .state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+  AZURE_SUBSCRIPTION_ID: 33dc506b-61d2-47dc-ab46-101c0ce1bea1
+  AZURE_CLIENT_ID: b99549ff-262f-43e6-93a2-eac672c1f539
+  AZURE_TENANT_ID: f2eae34a-d4a2-4d23-a74a-ccb32db66fd4
+  AZURE_APP_SECRET: ${{ secrets.AZURE_APP_SECRET }}
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        type: string
+      action:
+        description: 'Terraform Action (plan or apply)'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+    secrets:
+      AZURE_APP_SECRET:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - ga
+          - prod
+        default: 'dev'
+      action:
+        description: 'Terraform Action (plan or apply)'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+        default: 'plan'
+
+concurrency: terraform_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
+
+      - uses: jorgebg/stateful-action@v0.3
+        with:
+          branch: state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: cd platform-api && terraform init
+
+      - name: Terraform Plan
+        if: inputs.action == 'plan'
+        run: cd platform-api && terraform plan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        run: cd platform-api && terraform apply -auto-approve
+
+      - name: Route 53 Configuration
+        run: |
+          aws route53 list-hosted-zones
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terraform-logs
+          path: .state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
