@@ -51,7 +51,8 @@ on:
           - apply
         default: 'plan'
 
-concurrency: terraform_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+# Fix: Removed env from concurrency
+concurrency: terraform_platform-api_${{ inputs.environment }}
 
 jobs:
   terraform:
@@ -65,11 +66,11 @@ jobs:
           terraform_version: latest  # Always use the latest version
 
       - name: Define State Directory
-        run: echo "TMP_DIR_NAME=.state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}" >> $GITHUB_ENV
+        run: echo "TMP_DIR_NAME=.state_platform-api_${{ inputs.environment }}" >> $GITHUB_ENV
 
       - uses: jorgebg/stateful-action@v0.3
         with:
-          branch: state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+          branch: state_platform-api_${{ inputs.environment }}
 
       - name: Azure Login
         uses: azure/login@v1
