@@ -3,7 +3,6 @@ run-name: "[${{ inputs.environment }}] Terraform"
 
 env:
   APPLICATION_NAME: platform-api
-  TMP_DIR_NAME: .state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
   AZURE_SUBSCRIPTION_ID: 33dc506b-61d2-47dc-ab46-101c0ce1bea1
   AZURE_CLIENT_ID: b99549ff-262f-43e6-93a2-eac672c1f539
   AZURE_TENANT_ID: f2eae34a-d4a2-4d23-a74a-ccb32db66fd4
@@ -22,10 +21,7 @@ on:
       action:
         description: 'Terraform Action (plan or apply)'
         required: true
-        type: choice
-        options:
-          - plan
-          - apply
+        type: string
     secrets:
       AZURE_APP_SECRET:
         required: true
@@ -33,6 +29,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
+
   workflow_dispatch:
     inputs:
       environment:
@@ -62,10 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup Terraform (Latest Version)
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.6.0
+          terraform_version: latest  # Always use the latest version
+
+      - name: Define State Directory
+        run: echo "TMP_DIR_NAME=.state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}" >> $GITHUB_ENV
 
       - uses: jorgebg/stateful-action@v0.3
         with:
@@ -85,8 +85,11 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Init
-        run: cd platform-api && terraform init
+      - name: Terraform Init (with Upgrade)
+        run: |
+          cd platform-api
+          terraform init -upgrade  # Ensures latest provider versions
+          terraform validate       # Validates the Terraform configuration
 
       - name: Terraform Plan
         if: inputs.action == 'plan'
@@ -97,10 +100,9 @@ jobs:
         run: cd platform-api && terraform apply -auto-approve
 
       - name: Route 53 Configuration
-        run: |
-          aws route53 list-hosted-zones
+        run: aws route53 list-hosted-zones
 
       - uses: actions/upload-artifact@v4
         with:
           name: terraform-logs
-          path: .state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
+          path: ${{ env.TMP_DIR_NAME }}
