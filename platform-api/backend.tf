@@ -19,3 +19,6 @@
 # }
 
 
+terraform {
+  backend "azurerm" {}
+}
