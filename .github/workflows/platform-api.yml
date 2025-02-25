@@ -51,8 +51,7 @@ on:
           - apply
         default: 'plan'
 
-# Fix: Removed env from concurrency
-concurrency: terraform_platform-api_${{ inputs.environment }}
+concurrency: terraform_${{ inputs.environment }}
 
 jobs:
   terraform:
@@ -63,14 +62,20 @@ jobs:
       - name: Setup Terraform (Latest Version)
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: latest  # Always use the latest version
+          terraform_version: latest  # Ensures Terraform is always up-to-date
 
       - name: Define State Directory
-        run: echo "TMP_DIR_NAME=.state_platform-api_${{ inputs.environment }}" >> $GITHUB_ENV
+        run: |
+          export TMP_DIR_NAME=".state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}"
+          echo "TMP_DIR_NAME=$TMP_DIR_NAME" >> $GITHUB_ENV
+          mkdir -p $TMP_DIR_NAME  # Ensure the directory exists
+
+      - name: Debug State Directory
+        run: ls -l $TMP_DIR_NAME || echo "State directory does not exist"
 
       - uses: jorgebg/stateful-action@v0.3
         with:
-          branch: state_platform-api_${{ inputs.environment }}
+          branch: state_${{ env.APPLICATION_NAME }}_${{ inputs.environment }}
 
       - name: Azure Login
         uses: azure/login@v1
@@ -82,14 +87,14 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init (with Upgrade)
         run: |
           cd platform-api
-          terraform init -upgrade  # Ensures latest provider versions
+          terraform init -upgrade  # Ensures the latest provider versions
           terraform validate       # Validates the Terraform configuration
 
       - name: Terraform Plan
