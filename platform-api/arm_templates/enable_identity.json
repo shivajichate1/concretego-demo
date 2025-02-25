@@ -1,0 +1,39 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "frontDoorProfileName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the Front Door Profile."
+            }
+        },
+        "skuName": {
+            "type": "string",
+            "metadata": {
+                "description": "The SKU for the Front Door Profile."
+            }
+        }
+    },
+    "variables": {
+        "globalLocation": "Global"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Cdn/profiles",
+            "apiVersion": "2024-06-01-preview",
+            "name": "[parameters('frontDoorProfileName')]",
+            "location": "[variables('globalLocation')]",
+            "sku": {
+                "name": "[parameters('skuName')]"
+            },
+            "kind": "frontdoor",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                
+            }
+        }
+    ]
+}
