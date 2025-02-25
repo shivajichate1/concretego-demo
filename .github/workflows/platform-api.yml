@@ -30,6 +30,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+		
+		# Install Terraform
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
 
       # Azure Login
       - name: Azure Login
