@@ -51,12 +51,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1  
 
+      # Set environment variables for Terraform
+      - name: 'Set Terraform Azure Credentials'
+        run: |
+          echo "ARM_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientSecret)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .subscriptionId)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .tenantId)" >> $GITHUB_ENV
+
       # Terraform Init
       - name: Terraform Init
         run: |
           cd platform-api
           terraform init -backend-config="backend-configs/${{ inputs.environment }}.backend.tfvars" -reconfigure
-
+          
+      
       # Terraform Plan (if selected)
       - name: Terraform Plan
         if: ${{ inputs.action == 'plan' }}
